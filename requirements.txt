@@ -1,0 +1,11 @@
+Flask
+PyMySQL
+matplotlib
+tushare==1.2.67
+lxml
+pandas
+requests
+scikit-learn
+sklearn
+torch==1.10.1
+progressbar==2.5

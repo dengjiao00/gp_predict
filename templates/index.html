@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.bootcdn.net/ajax/libs/layer/3.5.1/theme/default/layer.min.css" rel="stylesheet">
+    <title>股票预测系统</title>
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+
+    <!-- HTML5 shim 和 Respond.js 是为了让 IE8 支持 HTML5 元素和媒体查询（media queries）功能 -->
+    <!-- 警告：通过 file:// 协议（就是直接将 html 页面拖拽到浏览器中）访问页面时 Respond.js 不起作用 -->
+    <!--[if lt IE 9]>
+      <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+    <![endif]-->
+    <style>
+        h1 {
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>股票预测系统</h1>
+    <div class="container">
+        <div class="col-md-10">
+            <div id="chart_stat" style="width: 100%;height: 500px;"></div>
+            <div id="chart_loss" style="width: 100%;height: 500px;"></div>
+            <div id="chart_predict" style="width: 100%;height: 500px;"></div>
+        </div>
+        <div class="col-md-2">
+            <div class="form-group">
+                <label for="gp_num">股票编号</label>
+                <select name="gp_num" class="form-control">
+                    {% for gp_num in gp_nums %}
+                    <option value="{{ gp_num }}">{{ gp_num }}</option>
+                    {% endfor %}
+                  </select>
+            </div>
+
+            <div class="from-group">
+                <div>选择模型：</div>
+                <label class="radio-inline">
+                    <input type="radio" name="model" value="rnn" checked> RNN
+                  </label>
+                <label class="radio-inline">
+                    <input type="radio" name="model" value="lstm"> LSTM
+                </label>
+            </div>
+
+            <div class="from-group">
+                <button type="button" class="btn btn-primary" id="submit">提交</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery (Bootstrap 的所有 JavaScript 插件都依赖 jQuery，所以必须放在前边) -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js" integrity="sha384-nvAa0+6Qg9clwYCGGPpDQLVpLNn0fRaROjHqs13t4Ggj3Ez50XnGQqc/r8MhnRDZ" crossorigin="anonymous"></script>
+    <!-- 加载 Bootstrap 的所有 JavaScript 插件。你也可以根据需要只加载单个插件。 -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.2.2/dist/echarts.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/layer/3.5.1/layer.js"></script>
+    <script type="text/javascript">
+        var statChart = echarts.init(document.getElementById('chart_stat'));
+        var lossChart = echarts.init(document.getElementById('chart_loss'));
+        var chartPredict = echarts.init(document.getElementById('chart_predict'));
+        let chartData = {}
+
+        $("#submit").click(function() {
+            let gp_num = $("select[name='gp_num'] option:checked").val();
+            let model = $("input[name='model']:checked").val();
+            let layer_index = layer.load(0, {
+                shade: false,
+                content: '服务器正在处理，请稍后～',
+                success: function(layerContentStyle) {
+                    layerContentStyle.find('.layui-layer-content').css({
+                        'padding-top': '35px',
+                        'text-align': 'left',
+                        'width': '120px'
+                    });
+                }
+            });
+            $.ajax({
+                url: '/',
+                type: 'POST',
+                data: {
+                    gp_num: gp_num,
+                    model: model
+                },
+                success(res) {
+                    chartData = res;
+                    if (res.code !== 0) {
+                        alert('股票编号错误~');
+                        return;
+                    }
+                    statChart.setOption(res.stat);
+                    lossChart.setOption(res.train_test_loss);
+                    chartPredict.setOption(res.predict)
+                    layer.close(layer_index)
+                }
+            });
+        })
+
+        // 指定图表的配置项和数据
+        // var option = {
+        //     title: {
+        //         text: '训练集和测试集上的Loss变化曲线'
+        //     },
+        //     tooltip: {
+        //         trigger: 'axis'
+        //     },
+        //     legend: {
+        //         data: ['Train Loss', 'Test Loss']
+        //     },
+        //     xAxis: {
+        //         type: 'category',
+        //         data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        //     },
+        //     yAxis: {
+        //         type: 'value'
+        //     },
+        //     series: [{
+        //         name: 'Train Loss',
+        //         type: 'line',
+        //         stack: 'Total',
+        //         smooth: true,
+        //         data: [120, 132, 101, 134, 90, 230, 210]
+        //     }, {
+        //         name: 'Test Loss',
+        //         type: 'line',
+        //         stack: 'Total',
+        //         smooth: true,
+        //         data: [20, 132, 101, 134, 340, 230, 210]
+        //     }]
+        // };
+
+        // 自适应大小
+        window.onresize = function() {
+            myChart.resize();
+        };
+    </script>
+</body>
+
+</html>
